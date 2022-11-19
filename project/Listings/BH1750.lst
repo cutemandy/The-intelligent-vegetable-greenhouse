@@ -1,0 +1,76 @@
+C51 COMPILER V9.57.0.0   BH1750                                                            05/29/2022 20:04:15 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE BH1750
+OBJECT MODULE PLACED IN .\Objects\BH1750.obj
+COMPILER INVOKED BY: E:\Keil_v5\C51\BIN\C51.EXE BH1750.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\BH
+                    -1750.lst) TABS(2) OBJECT(.\Objects\BH1750.obj)
+
+line level    source
+
+   1          #include <REGX52.H>
+   2          #include "delay.h"
+   3          #include "I2C.h"
+   4          #include <intrins.h>
+   5          #define BH1750_WriteCommand  0x46//IIC对BH1750写入指令
+   6          #define BH1750_ReceiveCommand 0x47//读出指令
+   7          
+   8          
+   9          
+  10          
+  11          void BH1750_Init()//通电
+  12          {
+  13   1        I2C_Start();
+  14   1        I2C_SendByte(BH1750_WriteCommand);
+  15   1        I2C_ReceiveAck();
+  16   1        I2C_SendByte(0x01);
+  17   1        I2C_ReceiveAck();
+  18   1        I2C_Stop();
+  19   1      }
+  20          void BH1750_Update()//高分辨率测量
+  21          {
+  22   1        BH1750_Init();//通电
+  23   1        I2C_Start();
+  24   1        I2C_SendByte(BH1750_WriteCommand);
+  25   1        I2C_ReceiveAck();
+  26   1        I2C_SendByte(0x10);//一次高分辨率指令为0001 0000
+  27   1        I2C_ReceiveAck();
+  28   1        I2C_Stop();
+  29   1        
+  30   1      }
+  31          
+  32          unsigned int BH1750_Read()
+  33          {
+  34   1        
+  35   1        unsigned char hbyte,lbyte;
+  36   1        unsigned int guangzhao;
+  37   1        EA=0;
+  38   1        I2C_Start();
+  39   1        I2C_SendByte(BH1750_ReceiveCommand);
+  40   1        I2C_ReceiveAck();
+  41   1        hbyte=I2C_ReceiveByte();
+  42   1        I2C_SendAck(0);
+  43   1        lbyte=I2C_ReceiveByte();
+  44   1        I2C_SendAck(1);
+  45   1        I2C_Stop();
+  46   1        guangzhao=(hbyte*256+lbyte)/1.2;//数据处理 实际值为16位数值除以1.2
+  47   1        EA=1;
+  48   1        return guangzhao;
+  49   1        
+  50   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    116    ----
+C51 COMPILER V9.57.0.0   BH1750                                                            05/29/2022 20:04:15 PAGE 2   
+
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       2
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

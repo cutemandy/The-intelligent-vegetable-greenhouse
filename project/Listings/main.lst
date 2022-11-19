@@ -1,0 +1,445 @@
+C51 COMPILER V9.57.0.0   MAIN                                                              11/17/2022 21:48:57 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: E:\Keil_v5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main
+                    -.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include <REGX52.H>
+   2          #include "delay.h"
+   3          #include "LCD1602.h"
+   4          #include "DHT22.h"
+   5          #include "AT24C02.h"
+   6          #include "Timer0.h"
+   7          #include "Key.h"
+   8          #include "BH1750.h"
+   9          
+  10          sbit motor=P2^3;
+  11          sbit hot=P2^4;
+  12          sbit jiashi=P3^6;
+  13          sbit chushi=P3^7;
+  14          sbit buzzer=P3^5;
+  15          unsigned char keynum,slectflag,flash;
+  16          unsigned char RepublicOfChina;
+  17          unsigned char mode,lflag;
+  18          unsigned char TH_newflag,LX_newflag;
+  19          unsigned int Lx,i,j,compare;
+  20          unsigned char set[]={0,0,0,0};//依次存RL RH TL TH
+  21          unsigned int LXset[]={0,0};//依次存LL LH
+  22          unsigned int  dianjif[]={0x01,0x02,0x04,0x08};//步进电机反转数组
+  23          unsigned int  dianjiz[]={0x08,0x04,0x02,0x01};//步进电机正转数组
+  24          unsigned char dakai=1,guanbi=0;//默认遮阳板关
+  25          unsigned char temp1,temp2,temp3,temp4;
+  26          
+  27          
+  28          
+  29          void setTH()//设置温湿度报警阈值
+  30          {
+  31   1        if(keynum==2)//按下“切换当前位”按键
+  32   1        {
+  33   2          slectflag++;
+  34   2          if(slectflag>=4){slectflag=0;}
+  35   2        }
+  36   1        if(keynum==3)//当前位+1
+  37   1        {
+  38   2          set[slectflag]++;
+  39   2          TH_newflag=1;//阈值更新后 温湿度存储标志位置1
+  40   2        }
+  41   1        if(keynum==4)//当前位-1
+  42   1        {
+  43   2          set[slectflag]--;
+  44   2          TH_newflag=1;//阈值更新后 温湿度存储标志位置1
+  45   2        }
+  46   1        if(set[0]>=set[1]){set[0]=set[1]-1;}//越界判断
+  47   1        if(set[2]>=set[3]){set[2]=set[3]-1;}
+  48   1        
+  49   1        if(TH_newflag==1)//阈值更新后才存入EEPROM 否则不存
+  50   1        {
+  51   2          EA=0;//存值的时候关闭定时中断入口EA 以免出错
+  52   2          AT24C02_WriteByte(0,set[0]);//存RL
+  53   2          delay(5); 
+  54   2          AT24C02_WriteByte(1,set[1]);//存RH
+C51 COMPILER V9.57.0.0   MAIN                                                              11/17/2022 21:48:57 PAGE 2   
+
+  55   2          delay(5);
+  56   2          AT24C02_WriteByte(2,set[2]);//存TL
+  57   2          delay(5);
+  58   2          AT24C02_WriteByte(3,set[3]);//存TH
+  59   2          delay(5);
+  60   2          EA=1;
+  61   2          TH_newflag=0;
+  62   2        }
+  63   1      
+  64   1        
+  65   1        //以下为报警阈值在LCD显示部分代码
+  66   1        LCD_ShowString(1,1,"H:");
+  67   1        LCD_ShowString(1,5,"%-");
+  68   1        if(slectflag==0 && flash==1){LCD_ShowString(1,3,"  ");}//闪烁
+  69   1        else {LCD_ShowNum(1,3,set[0],2);}//H下限
+  70   1        if(slectflag==1 && flash==1){LCD_ShowString(1,7,"  ");}
+  71   1        else {LCD_ShowNum(1,7,set[1],2);}//H上限
+  72   1        LCD_ShowString(1,9,"%");
+  73   1        LCD_ShowString(1,10,"       ");
+  74   1        
+  75   1        
+  76   1        LCD_ShowString(2,1,"T:");
+  77   1        LCD_ShowChar(2,5,0xDF);
+  78   1        LCD_ShowString(2,6,"C-");
+  79   1        if(slectflag==2 && flash==1){LCD_ShowString(2,3,"  ");}
+  80   1        else {LCD_ShowNum(2,3,set[2],2);}//T下限
+  81   1        LCD_ShowChar(2,5,0xDF);
+  82   1        if(slectflag==3 && flash==1){LCD_ShowString(2,8,"  ");}
+  83   1        else {LCD_ShowNum(2,8,set[3],2);}//T上限
+  84   1        LCD_ShowChar(2,10,0xDF);
+  85   1        LCD_ShowString(2,11,"C");
+  86   1        LCD_ShowString(2,12,"     ");
+  87   1      }
+  88          
+  89          
+  90          
+  91          
+  92          void setLX()//设置光强报警阈值
+  93          {
+  94   1        if(keynum==2)//按下“切换当前位”按键
+  95   1        {
+  96   2          lflag++;
+  97   2          if(lflag>=2){lflag=0;}
+  98   2        }
+  99   1        if(keynum==3)//当前位+1
+ 100   1        {
+ 101   2          LXset[lflag]++;
+ 102   2          LX_newflag=1;//阈值更新后 光照存储标志位置1
+ 103   2        }
+ 104   1        if(keynum==4)//当前位-1
+ 105   1        {
+ 106   2          LXset[lflag]--;
+ 107   2          LX_newflag=1;//阈值更新后 光照存储标志位置1
+ 108   2        }
+ 109   1        if(LXset[0]>=LXset[1]){LXset[0]=LXset[1]--;}//越值判断
+ 110   1        temp1=LXset[0]/256;//将16位光照阈值 拆为两个8位 存EEPROM
+ 111   1        temp2=LXset[0]%256;
+ 112   1        temp3=LXset[1]/256;
+ 113   1        temp4=LXset[1]%256;
+ 114   1        if(LX_newflag==1)//更新阈值后才存数据 否则不存
+ 115   1        {
+ 116   2          EA=0;//存值时期关闭定时中断入口 避免出错
+C51 COMPILER V9.57.0.0   MAIN                                                              11/17/2022 21:48:57 PAGE 3   
+
+ 117   2          AT24C02_WriteByte(4,temp1);
+ 118   2          delay(5); 
+ 119   2          AT24C02_WriteByte(5,temp2);//存LL
+ 120   2          delay(5);
+ 121   2          AT24C02_WriteByte(6,temp3);
+ 122   2          delay(5); 
+ 123   2          AT24C02_WriteByte(7,temp4);//存LH
+ 124   2          delay(5);
+ 125   2          EA=1;
+ 126   2          LX_newflag=0;
+ 127   2        }
+ 128   1        //以下为光强阈值在LCD显示部分代码
+ 129   1        
+ 130   1        LCD_ShowString(1,1,"light limit is:");
+ 131   1        
+ 132   1        if(lflag==0 && flash==1){LCD_ShowString(2,1,"     ");}
+ 133   1        else {LCD_ShowNum(2,1,LXset[0],5);}//LX下限
+ 134   1        if(lflag==1 && flash==1){LCD_ShowString(2,9,"     ");}
+ 135   1        else {LCD_ShowNum(2,9,LXset[1],5);}//LX上限
+ 136   1        LCD_ShowString(2,6,"Lx-");
+ 137   1        LCD_ShowString(2,14,"Lx");
+ 138   1        
+ 139   1      }
+ 140          
+ 141          
+ 142          
+ 143          
+ 144          void THwarn()
+ 145          {
+ 146   1        
+ 147   1          if(TM1>=set[3] || TM1<set[2])//温度异常
+ 148   1            {
+ 149   2              
+ 150   2              if(TM1>=set[3])//温度过高 制冷
+ 151   2                {
+ 152   3                  if(TM1<(set[3]/2)+set[3])//不超过1.5倍
+ 153   3                  {
+ 154   4                    compare=1500;//占空比调为50% 半速运行
+ 155   4                  }
+ 156   3                  else
+ 157   3                  {
+ 158   4                    compare=3000;//占空比100% 全速运行
+ 159   4                  }
+ 160   3                }
+ 161   2              else
+ 162   2                {
+ 163   3                  compare=0;//关闭制冷
+ 164   3                }
+ 165   2              if(TM1<set[2])//温度过低 开启加热
+ 166   2                {
+ 167   3                  hot=0;//开启加热
+ 168   3                  //compare=0;
+ 169   3                }
+ 170   2              else
+ 171   2                {
+ 172   3                  //compare=0;
+ 173   3                  //motor=1;
+ 174   3                  hot=1;//关闭加热
+ 175   3                }
+ 176   2            }
+ 177   1            else//温度正常 关闭温控设备
+ 178   1            {
+C51 COMPILER V9.57.0.0   MAIN                                                              11/17/2022 21:48:57 PAGE 4   
+
+ 179   2              compare=0;
+ 180   2              hot=1;
+ 181   2            }
+ 182   1          
+ 183   1          if(TM3>=set[1] || TM3<set[0])//湿度异常
+ 184   1          {
+ 185   2            
+ 186   2            if(TM3>=set[1]){chushi=0;}//过高 开启除湿机
+ 187   2            if(TM3<set[0]){jiashi=0;}//过低 开启加湿器
+ 188   2          }
+ 189   1          else//湿度正常 关闭湿控设备
+ 190   1          {
+ 191   2            
+ 192   2            jiashi=1;
+ 193   2            chushi=1;
+ 194   2          }
+ 195   1          
+ 196   1      }
+ 197          
+ 198          
+ 199          
+ 200          void LXwarn()
+ 201          {
+ 202   1        if(Lx>=LXset[1] || Lx<LXset[0])
+ 203   1        {
+ 204   2          if(Lx<LXset[0] && dakai==1 && guanbi==0)//光弱 步进电机正转
+ 205   2          {
+ 206   3            EA=0;//关闭定时中断入口
+ 207   3            for(i=0;i<2150;i++)
+ 208   3              {
+ 209   4                j=i;j=j%4;
+ 210   4                P1=dianjiz[j];
+ 211   4                delay(2);
+ 212   4              }
+ 213   3              dakai=0;guanbi=1;//标志位反转 遮阳棚已打开 如果继续光弱 电机也不能转动了
+ 214   3            EA=1;
+ 215   3          }
+ 216   2          if(Lx>=LXset[1] && guanbi==1 && dakai==0 )//光强 步进电机反转
+ 217   2          {
+ 218   3            EA=0;
+ 219   3            for(i=0;i<2150;i++)
+ 220   3              {
+ 221   4                j=i;j=j%4;
+ 222   4                P1=dianjif[j];
+ 223   4                delay(2);
+ 224   4              }
+ 225   3              dakai=1;guanbi=0;//标志位反转
+ 226   3            EA=1;
+ 227   3          }
+ 228   2          
+ 229   2        }
+ 230   1        else//光照正常 步进电机不动
+ 231   1        {
+ 232   2          P1=0x00;
+ 233   2        }
+ 234   1      }
+ 235          
+ 236          
+ 237          
+ 238          void buzzerwarn()//异常状态蜂鸣器报警
+ 239          {
+ 240   1        if(TM1>=set[3] || TM1<set[2] || TM3>=set[1] || TM3<set[0] || Lx>=LXset[1] || Lx<LXset[0])
+C51 COMPILER V9.57.0.0   MAIN                                                              11/17/2022 21:48:57 PAGE 5   
+
+ 241   1        {
+ 242   2          buzzer=0;
+ 243   2        }
+ 244   1        else
+ 245   1        {
+ 246   2          buzzer=1;
+ 247   2        }
+ 248   1      }
+ 249          
+ 250          
+ 251          
+ 252          void showTH()
+ 253          {
+ 254   1          
+ 255   1          LCD_ShowString(1,1,"H:");//环境参数送显示
+ 256   1          LCD_ShowNum(1,3,TM3,2); 
+ 257   1          LCD_ShowString(1,5,".");
+ 258   1          LCD_ShowNum(1,6,TM4,1);
+ 259   1          LCD_ShowString(1,7,"%");
+ 260   1          LCD_ShowString(1,8," ");
+ 261   1        
+ 262   1      
+ 263   1        
+ 264   1        
+ 265   1          LCD_ShowString(1,9,"T:"); 
+ 266   1          LCD_ShowNum(1,11,TM1,2);
+ 267   1          LCD_ShowString(1,13,".");
+ 268   1          LCD_ShowNum(1,14,TM2,1);
+ 269   1          LCD_ShowChar(1,15,0xDF);
+ 270   1          LCD_ShowString(1,16,"C");
+ 271   1          
+ 272   1        
+ 273   1        
+ 274   1        
+ 275   1          LCD_ShowString(2,1,"L:");
+ 276   1          LCD_ShowNum(2,3,Lx,5);
+ 277   1          LCD_ShowString(2,8,"Lx");
+ 278   1          LCD_ShowString(2,10,"        ");
+ 279   1          
+ 280   1          
+ 281   1          
+ 282   1      }
+ 283          
+ 284          
+ 285          
+ 286          
+ 287          void main()
+ 288          {
+ 289   1        LCD_Init();//LCD初始化
+ 290   1        set[0]=AT24C02_ReadByte(0);//读出报警阈值
+ 291   1        set[1]=AT24C02_ReadByte(1);
+ 292   1        set[2]=AT24C02_ReadByte(2);
+ 293   1        set[3]=AT24C02_ReadByte(3);
+ 294   1        temp1=AT24C02_ReadByte(4);
+ 295   1        temp2=AT24C02_ReadByte(5);
+ 296   1        temp3=AT24C02_ReadByte(6);
+ 297   1        temp4=AT24C02_ReadByte(7);
+ 298   1        if(set[0]>=set[1] || set[2]>=set[3] || set[0]>99 || set[1]>99 || set[2]>99 || set[3]>99
+ 299   1            || set[0]<0 || set[1]<0 || set[2]<0 || set[3]<0)//若读出的报警阈值异常 则置初值
+ 300   1        {
+ 301   2          EA=0;
+ 302   2          set[0]=40;
+C51 COMPILER V9.57.0.0   MAIN                                                              11/17/2022 21:48:57 PAGE 6   
+
+ 303   2          
+ 304   2          set[1]=60;
+ 305   2          set[2]=21;
+ 306   2          set[3]=28;
+ 307   2          AT24C02_WriteByte(0,set[0]);//存RL
+ 308   2          delay(5);
+ 309   2          AT24C02_WriteByte(1,set[1]);//存RH
+ 310   2          delay(5);
+ 311   2          AT24C02_WriteByte(2,set[2]);//存TL
+ 312   2          delay(5);
+ 313   2          AT24C02_WriteByte(3,set[3]);//存TH
+ 314   2          delay(5);
+ 315   2          EA=1;
+ 316   2        }
+ 317   1      //  if(temp2<=0 || temp4<=0 || temp1<=0 || temp3<=0 || temp1>5 || temp3>5 )
+ 318   1      //  {
+ 319   1      //    temp1=0;
+ 320   1      //    temp2=20;
+ 321   1      //    temp3=0;
+ 322   1      //    temp4=50;
+ 323   1      //    EA=0;
+ 324   1      //    AT24C02_WriteByte(4,temp1);
+ 325   1      //    delay(5); 
+ 326   1      //    AT24C02_WriteByte(5,temp2);//存LL
+ 327   1      //    delay(5);
+ 328   1      //    AT24C02_WriteByte(6,temp3);
+ 329   1      //    delay(5); 
+ 330   1      //    AT24C02_WriteByte(7,temp3);//存LH
+ 331   1      //    delay(5);
+ 332   1      //    EA=1;
+ 333   1      //  }
+ 334   1        LXset[0]=(temp1*256)+temp2;//读出光强阈值后 数据处理得到16位
+ 335   1        LXset[1]=(temp3*256)+temp4;
+ 336   1        Timer0Init();//定时器初始化 1ms进入一次定时中断
+ 337   1        motor=1;
+ 338   1        hot=1;
+ 339   1        buzzer=1;
+ 340   1        chushi=1;
+ 341   1        jiashi=1;
+ 342   1        P1=0x00;//以上几行为初始化
+ 343   1        delay(2000);
+ 344   1        while(1)
+ 345   1        {
+ 346   2          keynum=Key();//获取键盘扫描
+ 347   2          getHT();//采集温湿度并读出
+ 348   2          delay(2000);//2s采集一次温湿度
+ 349   2          BH1750_Update();
+ 350   2          delay(500);//500ms采集一次光强
+ 351   2          Lx=BH1750_Read();//采集光强并读出
+ 352   2          if(keynum==1)//按下设置键 改变模式标志位0、1、2循环
+ 353   2          {
+ 354   3            
+ 355   3            if(mode==0){mode=1;slectflag=0;}
+ 356   3            else if(mode==1){mode=2;lflag=0;}
+ 357   3            else {mode=0;}
+ 358   3          }
+ 359   2          switch(mode)
+ 360   2          {
+ 361   3            case 0:showTH();break;//环境参数送显
+ 362   3            case 1:setTH();break;//设置温湿度报警阈值
+ 363   3            case 2:setLX();break;//设置光强报警阈值
+ 364   3            default: break;
+C51 COMPILER V9.57.0.0   MAIN                                                              11/17/2022 21:48:57 PAGE 7   
+
+ 365   3          }
+ 366   2          buzzerwarn();//蜂鸣器模块
+ 367   2          THwarn();//温、湿控制模块
+ 368   2          LXwarn();//光控模块
+ 369   2        
+ 370   2        }
+ 371   1      }
+ 372          
+ 373          
+ 374          
+ 375          void Timer0_Routine() interrupt 1
+ 376          {
+ 377   1        static unsigned int T0Count,count2,count3;
+ 378   1          
+ 379   1        TL0 = 0x66;   //设置定时初值
+ 380   1        TH0 = 0xFC;   //设置定时初值
+ 381   1        T0Count++;
+ 382   1        if(T0Count>=20)
+ 383   1        {
+ 384   2          T0Count=0;
+ 385   2          Key_Loop();//20ms扫描一次键盘
+ 386   2        }
+ 387   1        count2++;
+ 388   1        if(count2>=500)
+ 389   1        {
+ 390   2          count2=0;
+ 391   2          flash=!flash;//设置阈值功能 闪烁用 500ms标志位反转
+ 392   2        }
+ 393   1        
+ 394   1          count3++;
+ 395   1          count3%=3000;//PWM周期为3秒
+ 396   1        
+ 397   1          if(count3<compare)
+ 398   1          {
+ 399   2            motor=0;
+ 400   2          }
+ 401   1      
+ 402   1          else
+ 403   1          {
+ 404   2            motor=1;//关闭降温
+ 405   2          }
+ 406   1        
+ 407   1        
+ 408   1        
+ 409   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1838    ----
+   CONSTANT SIZE    =     72    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     52    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

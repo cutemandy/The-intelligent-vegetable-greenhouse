@@ -1,0 +1,366 @@
+C51 COMPILER V9.57.0.0   DHT22                                                             05/29/2022 20:03:23 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE DHT22
+OBJECT MODULE PLACED IN .\Objects\DHT22.obj
+COMPILER INVOKED BY: E:\Keil_v5\C51\BIN\C51.EXE DHT22.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\DHT
+                    -22.lst) TABS(2) OBJECT(.\Objects\DHT22.obj)
+
+line level    source
+
+   1          #include <REGX52.H>
+   2          sbit DA=P2^2;
+   3          unsigned char wendu1,wendu2,shidu1,shidu2;
+   4          unsigned int wendu,shidu;
+   5          unsigned char TM1,TM2,TM3,TM4;
+   6          void DMS(unsigned int x_ms)   
+   7          {
+   8   1        unsigned char i, j;
+   9   1        while(x_ms)
+  10   1        { i = 2;
+  11   2        j = 239;
+  12   2        do
+  13   2        {
+  14   3          while (--j);
+  15   3        } while (--i);
+  16   2        x_ms--;
+  17   2        }
+  18   1      }
+  19          
+  20          
+  21          unsigned char  DHT22_init()//初始化
+  22          {
+  23   1        unsigned char i;
+  24   1        DA=1;
+  25   1        DA=0;
+  26   1        
+  27   1      
+  28   1        DMS(20);                
+  29   1        DA=1;
+  30   1        while(DA==1);
+  31   1        i = 27;while (--i);     
+  32   1        if(DA==1) return 1;
+  33   1        i = 37;while (--i);     
+  34   1        if(DA==0) return 1;
+  35   1        while(DA==1);       
+  36   1        
+  37   1        return 0;
+  38   1      }
+  39          
+  40          
+  41          unsigned char ReadHH()    //读湿度高八位
+  42          {
+  43   1        unsigned char i,n,HH=0x00;
+  44   1        for(n=0;n<8;n++)
+  45   1        {
+  46   2          while(DA==0);
+  47   2          
+  48   2          while (DA==1)
+  49   2          {
+  50   3            i = 17;while (--i); 
+  51   3            if(DA==1)
+  52   3            HH=HH|(0X01<<(7-n));
+  53   3          }
+  54   2        }
+C51 COMPILER V9.57.0.0   DHT22                                                             05/29/2022 20:03:23 PAGE 2   
+
+  55   1        
+  56   1        return HH;
+  57   1      }
+  58            
+  59          unsigned char ReadHL()      //读湿度低八位
+  60          {
+  61   1        unsigned char i,n,HL=0x00;
+  62   1        for(n=0;n<8;n++)
+  63   1        {
+  64   2          while(DA==0);
+  65   2          
+  66   2          while (DA==1)
+  67   2          {
+  68   3            i = 17;while (--i); 
+  69   3            if(DA==1)
+  70   3            HL=HL|(0X01<<(7-n));
+  71   3          }
+  72   2        }
+  73   1        
+  74   1        return HL;
+  75   1        
+  76   1      }
+  77          
+  78          unsigned char ReadTH()        //读温度高八位
+  79          {
+  80   1        unsigned char i,n,TH=0x00;
+  81   1        for(n=0;n<8;n++)
+  82   1        {
+  83   2          while(DA==0);
+  84   2          
+  85   2          while (DA==1)
+  86   2          {
+  87   3            i = 17;while (--i); 
+  88   3            if(DA==1)
+  89   3            TH=TH|(0X01<<(7-n));
+  90   3          }
+  91   2        }
+  92   1        
+  93   1        return TH;
+  94   1        
+  95   1      }
+  96          
+  97          unsigned char ReadTL()      //读温度低八位
+  98          {
+  99   1        unsigned char i,n,TL=0x00;
+ 100   1        for(n=0;n<8;n++)
+ 101   1        {
+ 102   2          while(DA==0);
+ 103   2          
+ 104   2          while (DA==1)
+ 105   2          {
+ 106   3            i = 17;while (--i); 
+ 107   3            if(DA==1)
+ 108   3            TL=TL|(0X01<<(7-n));
+ 109   3          }
+ 110   2        }
+ 111   1        
+ 112   1        return TL;
+ 113   1      }
+ 114          
+ 115          void getHT()//读出温湿度值
+ 116          {
+C51 COMPILER V9.57.0.0   DHT22                                                             05/29/2022 20:03:23 PAGE 3   
+
+ 117   1          EA=0;
+ 118   1          DHT22_init();   
+ 119   1          wendu1=ReadHH();
+ 120   1          wendu2=ReadHL();
+ 121   1          shidu1=ReadTH();
+ 122   1          shidu2=ReadTL();
+ 123   1          wendu=wendu1<<8|wendu2;//左移8位 加上低八位 组成16位，根据手册说明，该值为真实值的10倍
+ 124   1          shidu=shidu1<<8|shidu2;
+ 125   1          TM1=shidu/10;//得到实际值
+ 126   1          TM2=shidu%10;
+ 127   1          TM3=wendu/10;
+ 128   1          TM4=wendu%10;
+ 129   1          EA=1;
+ 130   1      }
+ 131          
+ 132          
+ 133          
+ 134          
+ 135          
+ 136          //#include <REGX52.H>
+ 137          //#include <intrins.h>
+ 138          //#define uchar unsigned char
+ 139          //#define uint unsigned int
+ 140          //uchar rec_dat[9];
+ 141          //uint shidu,wendu;
+ 142          //uchar shidu1,shidu2,wendu1,wendu2;
+ 143          //sbit Data=P1^7;   //定义数据线
+ 144          
+ 145          //void DHT22_delay_us(uchar n)
+ 146          //{
+ 147          //    while(--n);
+ 148          //}
+ 149          
+ 150          //void DHT22_delay_ms(uint z)
+ 151          //{
+ 152          //   uint i,j;
+ 153          //   for(i=z;i>0;i--)
+ 154          //      for(j=110;j>0;j--);
+ 155          //}
+ 156          
+ 157          //void DHT22_start()
+ 158          //{
+ 159          //   Data=1;
+ 160          //   DHT22_delay_us(2);
+ 161          //   Data=0;
+ 162          //   DHT22_delay_ms(20);   //延时18ms以上
+ 163          //   Data=1;
+ 164          //   DHT22_delay_us(30);
+ 165          //}
+ 166          
+ 167          //uchar DHT22_rec_byte()      //接收一个字节
+ 168          //{
+ 169          //   uchar i,dat=0;
+ 170          //  for(i=0;i<8;i++)    //从高到低依次接收8位数据
+ 171          //   {          
+ 172          //      while(!Data);  // 等待50us低电平过去
+ 173          //      DHT22_delay_us(8);     //延时60us，如果还为高则数据为1，否则为0 
+ 174          //      dat<<=1;           //移位使正确接收8位数据，数据为0时直接移位
+ 175          //      if(Data==1)    //数据为1时，使dat加1来接收数据1
+ 176          //         dat+=1;
+ 177          //      while(Data);  //等待数据线拉低    
+ 178          //    }  
+C51 COMPILER V9.57.0.0   DHT22                                                             05/29/2022 20:03:23 PAGE 4   
+
+ 179          //    return dat;
+ 180          //}
+ 181          
+ 182          //void DHT22_receive()      //接收40位的数据
+ 183          //{
+ 184          //    uchar R_H,R_L,T_H,T_L,revise; 
+ 185          //    EA=0;
+ 186          //    DHT22_start();
+ 187          //    if(Data==0)
+ 188          //    {
+ 189          //        while(Data==0);   //等待拉高     
+ 190          //        DHT22_delay_us(40);  //拉高后延时80us
+ 191          //        R_H=DHT22_rec_byte();    //接收湿度高八位  
+ 192          //        R_L=DHT22_rec_byte();    //接收湿度低八位  
+ 193          //        T_H=DHT22_rec_byte();    //接收温度高八位  
+ 194          //        T_L=DHT22_rec_byte();    //接收温度低八位
+ 195          //        revise=DHT22_rec_byte(); //接收校正位
+ 196          
+ 197          //        DHT22_delay_us(25);    //结束
+ 198          
+ 199          ////        if((R_H+R_L+T_H+T_L)==revise)      //校正
+ 200          ////        {
+ 201          //            shidu=R_H*256+R_L;
+ 202          //            wendu=T_H*256+T_L;
+ 203          //            shidu1=shidu/10;//整数
+ 204          //            shidu2=shidu%10;//小数
+ 205          //            wendu1=wendu/10;
+ 206          //            wendu2=wendu%10;
+ 207          ////        } 
+ 208          //       
+ 209          //        EA=1;
+ 210          //    }
+ 211          //}
+ 212          
+ 213          
+ 214          
+ 215          //#include <REGX52.H>
+ 216          //sbit DA=P1^7;
+ 217          
+ 218          //void dms(unsigned int x_ms)   
+ 219          //{
+ 220          //  unsigned char i, j;
+ 221          //  while(x_ms)
+ 222          //  { i = 2;
+ 223          //  j = 239;
+ 224          //  do
+ 225          //  {
+ 226          //    while (--j);
+ 227          //  } while (--i);
+ 228          //  x_ms--;
+ 229          //  }
+ 230          //}
+ 231          
+ 232          
+ 233          //unsigned char  DHT22_init()
+ 234          //{
+ 235          //  unsigned char i;
+ 236          //  DA=1;
+ 237          //  DA=0;
+ 238          //  
+ 239          
+ 240          //  dms(20);                //delay 1ms
+C51 COMPILER V9.57.0.0   DHT22                                                             05/29/2022 20:03:23 PAGE 5   
+
+ 241          //  DA=1;
+ 242          //  while(DA==1);
+ 243          //  i = 27;while (--i);     //delay 60us
+ 244          //  if(DA==1) return 1;
+ 245          //  i = 37;while (--i);     //delay 80us
+ 246          //  if(DA==0) return 1;
+ 247          //  while(DA==1);       
+ 248          //  
+ 249          //  return 0;
+ 250          //}
+ 251          
+ 252          
+ 253          //unsigned char ReadHH()    //读湿度高八位
+ 254          //{
+ 255          //  unsigned char i,n,HH=0x00;
+ 256          //  for(n=0;n<8;n++)
+ 257          //  {
+ 258          //    while(DA==0);
+ 259          //    
+ 260          //    while (DA==1)
+ 261          //    {
+ 262          //      i = 17;while (--i); //delau 40us
+ 263          //      if(DA==1)
+ 264          //      HH=HH|(0X01<<(7-n));
+ 265          //    }
+ 266          //  }
+ 267          //  
+ 268          //  return HH;
+ 269          //}
+ 270          //  
+ 271          //unsigned char ReadHL()      //读湿度低八位
+ 272          //{
+ 273          //  unsigned char i,n,HL=0x00;
+ 274          //  for(n=0;n<8;n++)
+ 275          //  {
+ 276          //    while(DA==0);
+ 277          //    
+ 278          //    while (DA==1)
+ 279          //    {
+ 280          //      i = 17;while (--i); //delau 40us
+ 281          //      if(DA==1)
+ 282          //      HL=HL|(0X01<<(7-n));
+ 283          //    }
+ 284          //  }
+ 285          //  
+ 286          //  return HL;
+ 287          //  
+ 288          //}
+ 289          
+ 290          //unsigned char ReadTH()        //读温度高八位
+ 291          //{
+ 292          //  unsigned char i,n,TH=0x00;
+ 293          //  for(n=0;n<8;n++)
+ 294          //  {
+ 295          //    while(DA==0);
+ 296          //    
+ 297          //    while (DA==1)
+ 298          //    {
+ 299          //      i = 17;while (--i); //delau 40us
+ 300          //      if(DA==1)
+ 301          //      TH=TH|(0X01<<(7-n));
+ 302          //    }
+C51 COMPILER V9.57.0.0   DHT22                                                             05/29/2022 20:03:23 PAGE 6   
+
+ 303          //  }
+ 304          //  
+ 305          //  return TH;
+ 306          //  
+ 307          //}
+ 308          
+ 309          //unsigned char ReadTL()      //读温度低八位
+ 310          //{
+ 311          //  unsigned char i,n,TL=0x00;
+ 312          //  for(n=0;n<8;n++)
+ 313          //  {
+ 314          //    while(DA==0);
+ 315          //    
+ 316          //    while (DA==1)
+ 317          //    {
+ 318          //      i = 17;while (--i); //delau 40us
+ 319          //      if(DA==1)
+ 320          //      TL=TL|(0X01<<(7-n));
+ 321          //    }
+ 322          //  }
+ 323          //  
+ 324          //  return TL;
+ 325          //}
+ 326          
+ 327          
+ 328          
+ 329          
+ 330          
+ 331          
+ 332          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    322    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     12    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

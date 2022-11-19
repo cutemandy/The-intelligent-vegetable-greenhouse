@@ -1,0 +1,61 @@
+C51 COMPILER V9.57.0.0   AT24C02                                                           05/29/2022 19:25:14 PAGE 1   
+
+
+C51 COMPILER V9.57.0.0, COMPILATION OF MODULE AT24C02
+OBJECT MODULE PLACED IN .\Objects\AT24C02.obj
+COMPILER INVOKED BY: E:\Keil_v5\C51\BIN\C51.EXE AT24C02.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\A
+                    -T24C02.lst) TABS(2) OBJECT(.\Objects\AT24C02.obj)
+
+line level    source
+
+   1          #include <REGX52.H>
+   2          #include "I2C.h"
+   3          
+   4          #define AT24C02_ADDRESS   0xA0
+   5          
+   6          
+   7          
+   8          void AT24C02_WriteByte(unsigned char WordAddress,Data)
+   9          {
+  10   1        I2C_Start();
+  11   1        I2C_SendByte(AT24C02_ADDRESS);
+  12   1        I2C_ReceiveAck();
+  13   1        I2C_SendByte(WordAddress);//发送要 存入的地址
+  14   1        I2C_ReceiveAck();//接受应答位
+  15   1        I2C_SendByte(Data);//写入要存入的数据
+  16   1        I2C_ReceiveAck();
+  17   1        I2C_Stop();
+  18   1      }
+  19          
+  20          
+  21          
+  22          unsigned char AT24C02_ReadByte(unsigned char WordAddress)
+  23          {
+  24   1        unsigned char Data;
+  25   1        I2C_Start();
+  26   1        I2C_SendByte(AT24C02_ADDRESS);//发出写入命令0X40
+  27   1        I2C_ReceiveAck();//接受应答位
+  28   1        I2C_SendByte(WordAddress);//发出要读出的地址
+  29   1        I2C_ReceiveAck();
+  30   1        I2C_Start();
+  31   1        I2C_SendByte(AT24C02_ADDRESS|0x01);//发送读出命令0xA1
+  32   1        I2C_ReceiveAck();
+  33   1        Data=I2C_ReceiveByte();//读出该地址的数据
+  34   1        I2C_SendAck(1);
+  35   1        I2C_Stop();
+  36   1        return Data;
+  37   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     84    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       5
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
